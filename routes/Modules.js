@@ -25,8 +25,8 @@ modes.get('/getmodes', async (req, res) => {
 
     await Mode.findAll()
     .then(mode => {
-       res.json({status: true, rows: mode});
-    })
+     res.json(mode);
+   })
     .catch(err => {
         //res.send('error: '+ err);
         res.send({status: false, code: 500, error: 'เกิดข้อผิดพลาดในการเรียกดูข้อมูล'});
@@ -36,7 +36,7 @@ modes.get('/getmodes', async (req, res) => {
 
 
 
-modes.post('/', async (req, res) => {
+modes.post('/modules', async (req, res) => {
 
     const moduleName = req.body.moduleName;
     const is_enable = req.body.is_enable;

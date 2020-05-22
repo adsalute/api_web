@@ -1,118 +1,153 @@
 const express = require("express");
-const users = express.Router();
+const router = express.Router();
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const { Op } = require("sequelize");
 
-const User = require("../models/User");
-users.use(cors());
 
-process.env.SECRET_KEY = 'ot';
+const userModel = require("../models/User.js");
 
-const today = new Date();
-   
+router.use(cors());
 
-users.post('/register', (req, res) => {
-    const userData = {
-        firstName : req.body.firstName,
-        lastName : req.body.lastName,
-        email : req.body.email,
-        password : req.body.email,
-        created: today,
-        personID: req.body.personID
+// insert Data
+router.post('/', async (req, res) => {
+
+    const firstName = req.body.firstName;
+    const lastName = req.body.lastName;
+    const email = req.body.email;
+    const personID = req.body.personID;
+    const payrollID = req.body.payrollID;
+    const active = req.body.active;
+
+
+
+    if (personID) {
+        userModel.create({
+            personID: personID,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            payrollID: payrollID,
+            active: active
+        })
+            .then(() => {
+                res.send({ status: true, code: 200 });
+            })
+            .catch(() => {
+                res.send({ status: false, code: 500, error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' });
+            });
+
+    } else {
+        res.send({ ok: false, error: 'ข้อมูลไม่มีจ๊ะ' });
     }
-    User.findOne({
-        where: {
-            personID : req.body.personID
-        }
-    }).then(function(user){
-        if(!user){
-            const salt = bcrypt.genSaltSync(10);
-            const password = userData.password; 
-            const hash = bcrypt.hashSync(password, salt);
-            userData.password = hash;
+});
 
-              
-            User.create(userData)
+
+//call total
+router.get('/', async (req, res) => {
+    const offset = +req.query.offset || 0;
+    const limit = +req.query.limit || 10;
+    const query = req.query.query || '';
+    console.log(query);
+    if (query) {
+
+         userModel.findAndCountAll({
+             attributes: ['personID', 'payrollID', 'firstName', 'lastName', 'email', 'active'],
+             where: {
+                 [Op.or]:[
+                 {firstName: {
+                     [Op.like]: query+'%'
+                 }},
+                {lastName: {
+                     [Op.like]: query+'%'
+                 }},
+                 {email: {
+                     [Op.like]: query+'%'
+                 }}
+                ]
+             },
+             limit: limit, 
+             offset: offset
+         }) 
             .then(user => {
-                let token = jwt.sign(user.dataValues, process.env.SECRET_KEY, {
-                    expiresIn: 1400
-                });
-                res.json({token:token});
+                res.send({ status: true, code: 200, datas: user });
             })
             .catch(err => {
-                res.send('error: '+ error);
+                //res.send('error: '+ err);
+                res.send({ status: false, code: 500, error: 'เกิดข้อผิดพลาดในการเรียกดูข้อมูล' });
             });
-        }else{
-            res.send({error: 'User already exists'});
-        }
-    })
-    .catch(err => {
-        res.send('error: '+ err);
-    });
-
-});
-
-
-users.post('/login2', (req, res) => {
-    
-    User.findOne({
-        where: {
-            personID :req.body.personID
-        }
-    })
-    .then(user =>{
-       res.send(req);
-    })
-    .catch(err => {
-        res.send('error: '+ err);
-    });
-
-});
-
-// find one user
-users.post('/login', (req, res) => {
-    User.findOne(
-        {
-            where: { personID: req.body.personID, },
+    } else {
+        userModel.findAndCountAll({
+            attributes: ['personID', 'payrollID', 'firstName', 'lastName', 'email', 'active'],
+            limit: limit,
+            offset: offset
         })
-    .then(user => res.json(user))
-    .catch(err => res.send('error:' + err));
-});
+            .then(user => {
+                res.send({ status: true, code: 200, datas: user });
+            })
+            .catch(err => {
+                //res.send('error: '+ err);
+                res.send({ status: false, code: 500, error: 'เกิดข้อผิดพลาดในการเรียกดูข้อมูล' });
+            });
 
-
-users.post('/regis', (req, res) => {
-    const today = new Date();
-    const userData = {
-        firstName : req.body.firstName,
-        lastName : req.body.lastName,
-        email : req.body.email,
-        password : req.body.email,
-        created: today,
-        personID: req.body.personID
     }
 
-    User.findOne(
-        {
-            where: { personID: req.body.personID, },
+});
+
+// call view data by case
+router.get('/:id', async (req, res) => {
+    const personID = req.params.id;
+    userModel.findAll({
+        attributes: ['personID', 'payrollID', 'firstName', 'lastName', 'email', 'active'],
+        where: { personID: personID }
+    })
+        .then(user => {
+            res.send({ status: true, code: 200, datas: user });
         })
-    .then(user => res.json(user));
+        .catch(err => {
+            res.send({ status: false, code: 500, error: 'เกิดข้อผิดพลาดในการเรียกดูข้อมูล' });
+        });
 });
 
-users.get('/profile', (req, res) => {
-    User.findOne({
+router.put('/:id', async (req, res) => {
+
+    const id = req.params.id;
+
+
+    const firstName = req.body.firstName;
+    const lastName = req.body.lastName;
+    const email = req.body.email;
+    const active = req.body.active;
+
+    const data = {
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        active: active
+    }
+
+    userModel.update(data, {
         where: {
-            personID: req.body.personID
+            personID: id
         }
-    }).then(user =>{
-        if(user){
-            res.json(user);
-        }else{
-            res.send('User does not exist');
-        }
-    }).catch(err => {
-        res.send('error: ' + err);
-    });
+    })
+        .then(() => {
+            res.send({ status: true, code: 200 });
+        });
 });
 
-module.exports = users;
+router.delete('/:id', async (req, res) => {
+
+    const personID = req.params.id;
+
+    userModel.destroy({
+        where: {
+            personID: personID
+        }
+    })
+        .then(() => {
+            res.send({ status: true, code: 200 });
+        });
+});
+
+
+module.exports = router;

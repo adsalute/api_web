@@ -2,7 +2,7 @@ const Sequelize = require('sequelize');
 const db = require("../database/db.js");
 
 module.exports = db.sequelize.define(
-    'mis_module',
+    'mis_modules',
     {
         moduleID:{
             type: Sequelize.INTEGER, 

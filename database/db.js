@@ -1,18 +1,21 @@
 const Sequelize = require('sequelize');
-const db = {};
-const sequelize = new Sequelize('api_mis', 'root', '0bo9okdki', {
-  host: 'localhost',
-  dialect: 'mysql',
+const env = require('../env/env');
+
+const sequelize = new Sequelize(env.database, env.username, env.password, {
+  host: env.host,
+  dialect: env.dialect,
   pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+    max: env.pool.max,
+    min: env.pool.min,
+    acquire: env.pool.acquire,
+    idle: env.pool.idle
   }
 });
 
+const db = {};
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
+
 
 module.exports = db;
